@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SwarmForge — Multi-UAV 3D Digital Twin & Mission Planner</title>
+  <style>
+    :root {
+      --bg: #070b14;
+      --panel: rgba(13, 20, 36, 0.92);
+      --panel-border: rgba(56, 189, 248, 0.22);
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --cyan: #38bdf8;
+      --purple: #a855f7;
+      --amber: #f59e0b;
+      --emerald: #10b981;
+      --red: #ef4444;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0; width: 100%; height: 100%;
+      background: var(--bg); color: var(--text);
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      overflow: hidden;
+    }
+    .app-shell {
+      display: grid;
+      grid-template-rows: 54px 1fr;
+      height: 100vh;
+      width: 100vw;
+    }
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 16px; background: #0b1222;
+      border-bottom: 1px solid var(--panel-border);
+      gap: 12px; z-index: 20;
+    }
+    .brand {
+      display: flex; align-items: center; gap: 10px; font-weight: 700;
+      letter-spacing: 0.06em; font-size: 14px; color: #f8fafc;
+      white-space: nowrap;
+    }
+    .brand-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--cyan); box-shadow: 0 0 12px var(--cyan);
+    }
+    .topbar-center {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    }
+    .lock-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px; border-radius: 999px;
+      background: rgba(16, 185, 129, 0.14);
+      border: 1px solid rgba(16, 185, 129, 0.5);
+      color: #6ee7b7; font-size: 11px; font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+    .ws-pill {
+      padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 600;
+      background: rgba(56, 189, 248, 0.14); border: 1px solid rgba(56, 189, 248, 0.4);
+      color: var(--cyan); font-family: ui-monospace, monospace;
+    }
+    .ws-pill.offline {
+      background: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.5); color: #fca5a5;
+    }
+    .clock-readout {
+      font-family: ui-monospace, monospace; font-size: 12px; color: #cbd5e1;
+      background: rgba(15, 23, 42, 0.9); padding: 4px 10px;
+      border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 6px;
+    }
+    .main-grid {
+      display: grid;
+      grid-template-columns: 300px 1fr 330px;
+      height: calc(100vh - 54px);
+      overflow: hidden;
+      position: relative;
+    }
+    .sidebar {
+      background: var(--panel);
+      border-right: 1px solid var(--panel-border);
+      padding: 12px;
+      overflow-y: auto;
+      display: flex; flex-direction: column; gap: 12px;
+      z-index: 10;
+    }
+    .sidebar.right {
+      border-right: none;
+      border-left: 1px solid var(--panel-border);
+    }
+    .section-card {
+      background: rgba(15, 23, 42, 0.78);
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      border-radius: 8px;
+      padding: 10px;
+    }
+    .section-title {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--cyan); margin: 0 0 8px 0;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .btn-row { display: flex; gap: 6px; flex-wrap: wrap; }
+    button, select {
+      font-family: inherit; font-size: 12px; border-radius: 6px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      background: #13203b; color: var(--text);
+      padding: 6px 10px; cursor: pointer; transition: all 0.15s ease;
+    }
+    button:hover { border-color: var(--cyan); background: #1a2c4f; }
+    button.primary { background: #0284c7; border-color: #38bdf8; color: #fff; font-weight: 600; }
+    button.primary:hover { background: #0369a1; }
+    button.warn { background: rgba(245, 158, 11, 0.18); border-color: rgba(245, 158, 11, 0.6); color: #fcd34d; }
+    button.danger { background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.65); color: #fca5a5; font-weight: 600; }
+    button.success { background: rgba(16, 185, 129, 0.18); border-color: rgba(16, 185, 129, 0.55); color: #6ee7b7; }
+    select { width: 100%; padding: 6px 8px; }
+    .slider-group { margin-bottom: 8px; }
+    .slider-label {
+      display: flex; justify-content: space-between;
+      font-size: 11px; color: var(--muted); margin-bottom: 2px;
+      font-family: ui-monospace, monospace;
+    }
+    input[type="range"] { width: 100%; accent-color: var(--cyan); cursor: pointer; }
+    .viewport-wrap {
+      position: relative; width: 100%; height: 100%; overflow: hidden;
+      background: radial-gradient(circle at 50% 35%, #0f1b33 0%, #060a12 80%);
+    }
+    #viewport-canvas-host {
+      width: 100%; height: 100%; position: relative;
+    }
+    .viewport-hud-top {
+      position: absolute; top: 12px; left: 12px; right: 12px;
+      display: flex; justify-content: space-between; pointer-events: none; z-index: 5;
+    }
+    .hud-chip {
+      pointer-events: auto;
+      background: rgba(7, 11, 20, 0.78);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 6px; padding: 6px 10px;
+      font-size: 11px; color: #cbd5e1;
+      backdrop-filter: blur(6px);
+    }
+    .legend-row { display: flex; gap: 12px; align-items: center; }
+    .legend-item { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; }
+    .swatch { width: 10px; height: 3px; border-radius: 2px; display: inline-block; }
+    .viewport-hud-bottom {
+      position: absolute; bottom: 12px; left: 12px;
+      display: flex; gap: 8px; z-index: 5;
+    }
+    .uav-card {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-left: 3px solid var(--cyan);
+      border-radius: 8px;
+      padding: 9px;
+      font-size: 11px;
+    }
+    .uav-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 6px; font-weight: 700;
+    }
+    .mode-badge {
+      padding: 2px 6px; border-radius: 4px; font-size: 10px;
+      font-family: ui-monospace, monospace;
+      background: rgba(56, 189, 248, 0.16); color: var(--cyan);
+    }
+    .mode-badge.alert { background: rgba(239, 68, 68, 0.22); color: #fca5a5; }
+    .mode-badge.warn { background: rgba(245, 158, 11, 0.22); color: #fcd34d; }
+    .metrics-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 4px 8px;
+      font-family: ui-monospace, monospace; font-size: 10.5px; color: #cbd5e1;
+    }
+    .soc-bar-bg {
+      height: 5px; border-radius: 99px; background: rgba(148, 163, 184, 0.2);
+      margin: 5px 0; overflow: hidden;
+    }
+    .soc-bar-fill { height: 100%; border-radius: 99px; transition: width 0.15s ease; }
+    .alert-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+    .alert-tag {
+      font-size: 9.5px; padding: 1px 5px; border-radius: 4px;
+      background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.45);
+      color: #fecaca; font-family: ui-monospace, monospace;
+    }
+    .event-log {
+      font-family: ui-monospace, monospace; font-size: 10.5px;
+      max-height: 165px; overflow-y: auto; color: #94a3b8;
+      display: flex; flex-direction: column; gap: 3px;
+    }
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(2, 6, 23, 0.78);
+      display: none; align-items: center; justify-content: center; z-index: 50;
+      backdrop-filter: blur(4px);
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal-card {
+      width: min(860px, 94vw); max-height: 88vh; overflow-y: auto;
+      background: #0b1325; border: 1px solid rgba(56, 189, 248, 0.45);
+      border-radius: 12px; padding: 18px; box-shadow: 0 24px 64px rgba(0,0,0,0.65);
+    }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 12px; }
+    th, td {
+      text-align: left; padding: 8px 10px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+    }
+    th { color: var(--cyan); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .num-input-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-top: 8px; }
+    .num-input-row label { font-size: 10px; color: var(--muted); display: flex; flex-direction: column; gap: 2px; }
+    .num-input-row input {
+      background: #13203b; border: 1px solid rgba(148, 163, 184, 0.25);
+      color: #fff; padding: 5px; border-radius: 5px; font-family: ui-monospace, monospace;
+      width: 100%;
+    }
+    .toast {
+      position: fixed; bottom: 18px; right: 18px; z-index: 60;
+      background: #0f172a; border: 1px solid var(--cyan); color: #f8fafc;
+      padding: 10px 14px; border-radius: 8px; font-size: 12px;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.5); display: none; max-width: 380px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-dot"></span>
+        <span>SWARMFORGE // 3D MULTI-UAV DIGITAL TWIN</span>
+      </div>
+      <div class="topbar-center">
+        <span class="lock-pill" id="lock-badge">HARDWARE ACTUATION LOCKED = TRUE</span>
+        <button id="btn-test-lock" title="Verify API Hardware Safety Interlock">Test Lock Guard (403)</button>
+        <span class="clock-readout" id="clock-readout">T+00.00s | TICK 0 | STOPPED</span>
+        <span class="ws-pill" id="ws-status">WS: CONNECTING</span>
+      </div>
+      <div class="btn-row">
+        <button class="primary" id="btn-open-compare">Compare A* / RRT* / APF</button>
+      </div>
+    </header>
+
+    <div class="main-grid">
+      <!-- Left Control Rail -->
+      <aside class="sidebar">
+        <div class="section-card">
+          <div class="section-title">Simulation Transport</div>
+          <div class="btn-row">
+            <button class="primary" id="btn-start">Start</button>
+            <button id="btn-pause">Pause</button>
+            <button id="btn-step">Step +20</button>
+            <button id="btn-reset">Reset</button>
+          </div>
+        </div>
+
+        <div class="section-card">
+          <div class="section-title">Mission Template & JSON I/O</div>
+          <select id="mission-select"></select>
+          <div class="btn-row" style="margin-top: 8px;">
+            <button id="btn-load-mission" class="primary">Load Preset</button>
+            <button id="btn-export-json">Export JSON</button>
+            <button id="btn-import-json">Import JSON</button>
+            <input type="file" id="import-file-input" accept=".json" style="display:none" />
+          </div>
+        </div>
+
+        <div class="section-card">
+          <div class="section-title">Global Planner Override</div>
+          <div class="btn-row">
+            <button onclick="switchSwarmPlanner('astar')">All → A*</button>
+            <button onclick="switchSwarmPlanner('rrt_star')">All → RRT*</button>
+            <button onclick="switchSwarmPlanner('apf')">All → APF</button>
+          </div>
+        </div>
+
+        <div class="section-card">
+          <div class="section-title">
+            <span>Wind & Dryden Turbulence</span>
+            <span id="wind-mag-lbl" style="font-family:monospace; color:#cbd5e1;">0.0 m/s</span>
+          </div>
+          <div class="slider-group">
+            <div class="slider-label"><span>Steady Wind Vx (East)</span><span id="lbl-vx">2.4</span></div>
+            <input type="range" id="wind-vx" min="-10" max="10" step="0.5" value="2.4" />
+          </div>
+          <div class="slider-group">
+            <div class="slider-label"><span>Steady Wind Vy (North)</span><span id="lbl-vy">-1.1</span></div>
+            <input type="range" id="wind-vy" min="-10" max="10" step="0.5" value="-1.1" />
+          </div>
+          <div class="slider-group">
+            <div class="slider-label"><span>Dryden Turbulence σ</span><span id="lbl-turb">0.75</span></div>
+            <input type="range" id="wind-turb" min="0" max="4" step="0.1" value="0.75" />
+          </div>
+          <button id="btn-apply-wind" style="width:100%">Apply Wind Field</button>
+        </div>
+
+        <div class="section-card">
+          <div class="section-title">Comm-Loss & Emergency Failsafes</div>
+          <div style="display:flex; gap:6px; margin-bottom:8px; align-items:center;">
+            <span style="font-size:11px; color:var(--muted); white-space:nowrap;">Link Drop Mode:</span>
+            <select id="comm-action-select">
+              <option value="RTL">Autonomous RTL</option>
+              <option value="HOLD">Autonomous HOLD</option>
+            </select>
+          </div>
+          <div class="btn-row">
+            <button class="warn" id="btn-comm-drop">Drop Comm Link</button>
+            <button class="success" id="btn-comm-restore">Restore Link</button>
+          </div>
+          <div class="btn-row" style="margin-top:8px;">
+            <button class="danger" id="btn-emerg-rtl">Emergency RTL</button>
+            <button class="danger" id="btn-emerg-land">Emergency Land</button>
+            <button id="btn-emerg-clear">Clear</button>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Center 3D Viewport -->
+      <main class="viewport-wrap">
+        <div class="viewport-hud-top">
+          <div class="hud-chip">
+            <div class="legend-row">
+              <span class="legend-item"><span class="swatch" style="background:#38bdf8"></span>A* Voxel+LOS</span>
+              <span class="legend-item"><span class="swatch" style="background:#a855f7"></span>RRT* Rewired</span>
+              <span class="legend-item"><span class="swatch" style="background:#f59e0b"></span>APF Potential</span>
+              <span class="legend-item"><span class="swatch" style="background:#10b981"></span>Geofence</span>
+            </div>
+          </div>
+          <div class="hud-chip" id="render-engine-badge">Renderer: Initializing...</div>
+        </div>
+        <div id="viewport-canvas-host"></div>
+        <div class="viewport-hud-bottom">
+          <button onclick="setCameraPreset('iso')">Iso Orbit</button>
+          <button onclick="setCameraPreset('top')">Top-Down</button>
+          <button onclick="setCameraPreset('low')">Low Skyline</button>
+          <button id="btn-clear-overlay" style="display:none" onclick="clearCompareOverlay()">Clear Benchmark Overlay</button>
+        </div>
+      </main>
+
+      <!-- Right Telemetry Rail -->
+      <aside class="sidebar right">
+        <div class="section-card">
+          <div class="section-title">Swarm Live Telemetry</div>
+          <div id="uav-cards-container" style="display:flex; flex-direction:column; gap:8px;"></div>
+        </div>
+        <div class="section-card">
+          <div class="section-title">Safety & Mission Event Log</div>
+          <div class="event-log" id="event-log"></div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- Planner Comparison Modal -->
+  <div class="modal-backdrop" id="compare-modal">
+    <div class="modal-card">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h3 style="margin:0; color:#f8fafc;">3D Path Planner Benchmark: A* vs RRT* vs APF</h3>
+        <button id="btn-close-compare">Close</button>
+      </div>
+      <p style="font-size:12px; color:var(--muted); margin:6px 0 10px 0;">
+        Benchmarks all three planners across the active mission's 3D buildings, cylindrical towers, and geofence constraints.
+      </p>
+      <div class="num-input-row">
+        <label>Start X<input type="number" id="cmp-sx" value="-62" /></label>
+        <label>Start Y<input type="number" id="cmp-sy" value="-52" /></label>
+        <label>Start Z<input type="number" id="cmp-sz" value="18" /></label>
+        <label>Goal X<input type="number" id="cmp-gx" value="58" /></label>
+        <label>Goal Y<input type="number" id="cmp-gy" value="48" /></label>
+        <label>Goal Z<input type="number" id="cmp-gz" value="24" /></label>
+      </div>
+      <div class="btn-row" style="margin-top:10px;">
+        <button class="primary" id="btn-run-compare">Run 3D Planner Benchmark</button>
+        <button id="btn-overlay-compare">Overlay Paths in 3D Viewport</button>
+      </div>
+      <div id="compare-results-container" style="margin-top:12px;"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- Try Three.js CDN with graceful automatic 3D Canvas fallback when offline -->
+  <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+  <script>
+    const COLORS = {
+      astar: "#38bdf8",
+      rrt_star: "#a855f7",
+      apf: "#f59e0b",
+      direct: "#10b981",
+    };
+
+    let latestFrame = null;
+    let compareOverlay = null;
+    let ws = null;
+
+    function showToast(msg, isError = false) {
+      const el = document.getElementById("toast");
+      el.textContent = msg;
+      el.style.borderColor = isError ? "#ef4444" : "#38bdf8";
+      el.style.display = "block";
+      clearTimeout(el._timer);
+      el._timer = setTimeout(() => { el.style.display = "none"; }, 4200);
+    }
+
+    async function apiPost(url, body = {}) {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw { status: res.status, data };
+      }
+      return data;
+    }
+
+    // ---------- 3D RENDERER (Three.js WebGL + Self-Contained Canvas3D Fallback) ----------
+    class SwarmSceneRenderer {
+      constructor(hostEl) {
+        this.host = hostEl;
+        this.useThree = typeof window.THREE !== "undefined";
+        this.cam = { yaw: 0.72, pitch: 0.56, dist: 215, targetX: 0, targetY: 0, targetZ: 14 };
+        this.dragging = false;
+        this.panning = false;
+        this.lastMouse = { x: 0, y: 0 };
+        this.rotorAngle = 0;
+
+        if (this.useThree) {
+          this._initThree();
+          document.getElementById("render-engine-badge").textContent = "Renderer: Three.js WebGL 3D";
+        } else {
+          this._initCanvas3D();
+          document.getElementById("render-engine-badge").textContent = "Renderer: Canvas3D Offline Perspective";
+        }
+        this._bindPointerControls();
+      }
+
+      _bindPointerControls() {
+        const dom = this.domElement;
+        dom.addEventListener("contextmenu", (e) => e.preventDefault());
+        dom.addEventListener("mousedown", (e) => {
+          this.dragging = true;
+          this.panning = e.button === 2 || e.shiftKey;
+          this.lastMouse = { x: e.clientX, y: e.clientY };
+        });
+        window.addEventListener("mouseup", () => { this.dragging = false; });
+        window.addEventListener("mousemove", (e) => {
+          if (!this.dragging) return;
+          const dx = e.clientX - this.lastMouse.x;
+          const dy = e.clientY - this.lastMouse.y;
+          this.lastMouse = { x: e.clientX, y: e.clientY };
+          if (this.panning) {
+            const cy = Math.cos(this.cam.yaw), sy = Math.sin(this.cam.yaw);
+            this.cam.targetX -= (dx * cy - dy * sy) * 0.25;
+            this.cam.targetY += (dx * sy + dy * cy) * 0.25;
+          } else {
+            this.cam.yaw -= dx * 0.007;
+            this.cam.pitch = Math.max(0.12, Math.min(1.48, this.cam.pitch + dy * 0.006));
+          }
+        });
+        dom.addEventListener("wheel", (e) => {
+          e.preventDefault();
+          this.cam.dist = Math.max(45, Math.min(480, this.cam.dist + e.deltaY * 0.18));
+        }, { passive: false });
+      }
+
+      setPreset(preset) {
+        if (preset === "top") {
+          this.cam = { yaw: 0.0, pitch: 1.46, dist: 245, targetX: 0, targetY: 0, targetZ: 10 };
+        } else if (preset === "low") {
+          this.cam = { yaw: 0.55, pitch: 0.24, dist: 160, targetX: 0, targetY: 0, targetZ: 20 };
+        } else {
+          this.cam = { yaw: 0.72, pitch: 0.56, dist: 215, targetX: 0, targetY: 0, targetZ: 14 };
+        }
+      }
+
+      // ENU (x East, y North, z Up) -> Three.js (x, z_up, -y_north)
+      _toThree(p) {
+        return new THREE.Vector3(p.x, p.z, -p.y);
+      }
+
+      _initThree() {
+        this.scene = new THREE.Scene();
+        this.scene.background = new THREE.Color(0x070b14);
+        this.scene.fog = new THREE.FogExp2(0x070b14, 0.0018);
+
+        const w = this.host.clientWidth || 800;
+        const h = this.host.clientHeight || 600;
+        this.camera = new THREE.PerspectiveCamera(50, w / h, 0.5, 1200);
+        this.renderer = new THREE.WebGLRenderer({ antialias: true });
+        this.renderer.setSize(w, h);
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+        this.host.appendChild(this.renderer.domElement);
+        this.domElement = this.renderer.domElement;
+
+        this.scene.add(new THREE.AmbientLight(0x93c5fd, 0.65));
+        const sun = new THREE.DirectionalLight(0xffffff, 1.15);
+        sun.position.set(120, 180, 90);
+        this.scene.add(sun);
+
+        const grid = new THREE.GridHelper(320, 32, 0x1e3a5f, 0x0f1f38);
+        this.scene.add(grid);
+
+        this.envGroup = new THREE.Group();
+        this.pathGroup = new THREE.Group();
+        this.compareGroup = new THREE.Group();
+        this.uavGroup = new THREE.Group();
+        this.scene.add(this.envGroup, this.pathGroup, this.compareGroup, this.uavGroup);
+
+        this.uavMeshes = new Map();
+        this.lastMissionSignature = "";
+        this.lastPathSignature = "";
+
+        window.addEventListener("resize", () => {
+          const nw = this.host.clientWidth || 800;
+          const nh = this.host.clientHeight || 600;
+          this.camera.aspect = nw / nh;
+          this.camera.updateProjectionMatrix();
+          this.renderer.setSize(nw, nh);
+        });
+      }
+
+      _buildQuadMesh(colorHex) {
+        const grp = new THREE.Group();
+        const bodyGeo = new THREE.BoxGeometry(1.8, 0.65, 2.2);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: colorHex, metalness: 0.4, roughness: 0.35 });
+        grp.add(new THREE.Mesh(bodyGeo, bodyMat));
+
+        const nose = new THREE.Mesh(
+          new THREE.ConeGeometry(0.42, 0.9, 8),
+          new THREE.MeshBasicMaterial({ color: 0xfef08a })
+        );
+        nose.rotation.x = Math.PI / 2;
+        nose.position.set(0, 0.1, -1.4);
+        grp.add(nose);
+
+        const armGeo = new THREE.BoxGeometry(4.4, 0.18, 0.22);
+        const armMat = new THREE.MeshStandardMaterial({ color: 0xcbd5e1 });
+        const arm1 = new THREE.Mesh(armGeo, armMat);
+        arm1.rotation.y = Math.PI / 4;
+        const arm2 = new THREE.Mesh(armGeo, armMat);
+        arm2.rotation.y = -Math.PI / 4;
+        grp.add(arm1, arm2);
+
+        const rotors = [];
+        const rotorGeo = new THREE.BoxGeometry(1.5, 0.06, 0.18);
+        const rotorMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.85 });
+        const discGeo = new THREE.RingGeometry(0.65, 0.78, 16);
+        const discMat = new THREE.MeshBasicMaterial({ color: colorHex, side: THREE.DoubleSide, transparent: true, opacity: 0.5 });
+
+        const offsets = [
+          [1.55, 0.32, 1.55],
+          [-1.55, 0.32, 1.55],
+          [1.55, 0.32, -1.55],
+          [-1.55, 0.32, -1.55],
+        ];
+        for (const [ox, oy, oz] of offsets) {
+          const blade = new THREE.Mesh(rotorGeo, rotorMat);
+          blade.position.set(ox, oy, oz);
+          grp.add(blade);
+          rotors.push(blade);
+
+          const ring = new THREE.Mesh(discGeo, discMat);
+          ring.rotation.x = Math.PI / 2;
+          ring.position.set(ox, oy - 0.02, oz);
+          grp.add(ring);
+        }
+        grp.userData.rotors = rotors;
+
+        // Vertical drop line to terrain
+        const dropGeo = new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(0, 0, 0),
+          new THREE.Vector3(0, -1, 0),
+        ]);
+        const dropLine = new THREE.Line(
+          dropGeo,
+          new THREE.LineBasicMaterial({ color: colorHex, transparent: true, opacity: 0.38 })
+        );
+        grp.userData.dropLine = dropLine;
+        return grp;
+      }
+
+      _syncThreeEnvironment(frame) {
+        const sig = JSON.stringify({
+          m: frame.mission_id,
+          o: frame.obstacles.length,
+          g: frame.geofence.radius_m,
+          h: frame.geofence.max_altitude_m,
+        });
+        if (sig === this.lastMissionSignature) return;
+        this.lastMissionSignature = sig;
+
+        this.envGroup.clear();
+        for (const obs of frame.obstacles) {
+          let mesh;
+          if (obs.kind === "cylinder") {
+            const geo = new THREE.CylinderGeometry(obs.radius, obs.radius, obs.height_z, 24);
+            const mat = new THREE.MeshStandardMaterial({
+              color: obs.color || 0x475569, metalness: 0.25, roughness: 0.7,
+            });
+            mesh = new THREE.Mesh(geo, mat);
+            mesh.position.set(obs.x, obs.base_z + obs.height_z * 0.5, -obs.y);
+          } else {
+            const geo = new THREE.BoxGeometry(obs.width_x, obs.height_z, obs.depth_y);
+            const mat = new THREE.MeshStandardMaterial({
+              color: obs.color || 0x334155, metalness: 0.25, roughness: 0.72,
+            });
+            mesh = new THREE.Mesh(geo, mat);
+            mesh.position.set(obs.x, obs.base_z + obs.height_z * 0.5, -obs.y);
+            const edges = new THREE.LineSegments(
+              new THREE.EdgesGeometry(geo),
+              new THREE.LineBasicMaterial({ color: 0x64748b, transparent: true, opacity: 0.5 })
+            );
+            mesh.add(edges);
+          }
+          this.envGroup.add(mesh);
+        }
+
+        if (frame.geofence && frame.geofence.enabled) {
+          const gf = frame.geofence;
+          const gfGeo = new THREE.CylinderGeometry(gf.radius_m, gf.radius_m, gf.max_altitude_m, 48, 1, true);
+          const gfMat = new THREE.MeshBasicMaterial({
+            color: 0x10b981, transparent: true, opacity: 0.08, side: THREE.DoubleSide, depthWrite: false,
+          });
+          const gfMesh = new THREE.Mesh(gfGeo, gfMat);
+          gfMesh.position.set(gf.center_x, gf.max_altitude_m * 0.5, -gf.center_y);
+          this.envGroup.add(gfMesh);
+          this.geofenceMat = gfMat;
+
+          const ringGeo = new THREE.RingGeometry(gf.radius_m - 0.5, gf.radius_m + 0.5, 64);
+          const ringMat = new THREE.MeshBasicMaterial({ color: 0x10b981, side: THREE.DoubleSide, transparent: true, opacity: 0.45 });
+          const topRing = new THREE.Mesh(ringGeo, ringMat);
+          topRing.rotation.x = Math.PI / 2;
+          topRing.position.set(gf.center_x, gf.max_altitude_m, -gf.center_y);
+          this.envGroup.add(topRing);
+        }
+      }
+
+      _syncThreePaths(frame) {
+        const sig = frame.uavs.map((u) => `${u.uav_id}:${u.planner_type}:${u.planned_path.length}`).join("|");
+        if (sig === this.lastPathSignature) return;
+        this.lastPathSignature = sig;
+        this.pathGroup.clear();
+
+        for (const uav of frame.uavs) {
+          const color = COLORS[uav.planner_type] || uav.color || "#38bdf8";
+          if (uav.planned_path && uav.planned_path.length >= 2) {
+            const pts = uav.planned_path.map((p) => this._toThree(p));
+            const geo = new THREE.BufferGeometry().setFromPoints(pts);
+            this.pathGroup.add(new THREE.Line(geo, new THREE.LineBasicMaterial({ color })));
+          }
+          for (const wp of uav.mission_waypoints || []) {
+            const beacon = new THREE.Mesh(
+              new THREE.OctahedronGeometry(1.25, 0),
+              new THREE.MeshBasicMaterial({ color, wireframe: true })
+            );
+            beacon.position.copy(this._toThree(wp));
+            this.pathGroup.add(beacon);
+          }
+        }
+      }
+
+      _syncCompareOverlay() {
+        this.compareGroup.clear();
+        if (!compareOverlay) return;
+        for (const res of compareOverlay.results || []) {
+          if (!res.success || !res.waypoints || res.waypoints.length < 2) continue;
+          const pts = res.waypoints.map((p) => this._toThree(p));
+          const geo = new THREE.BufferGeometry().setFromPoints(pts);
+          const color = COLORS[res.algorithm] || "#ffffff";
+          this.compareGroup.add(new THREE.Line(geo, new THREE.LineBasicMaterial({ color })));
+        }
+      }
+
+      _initCanvas3D() {
+        this.canvas = document.createElement("canvas");
+        this.canvas.style.width = "100%";
+        this.canvas.style.height = "100%";
+        this.host.appendChild(this.canvas);
+        this.ctx = this.canvas.getContext("2d");
+        this.domElement = this.canvas;
+      }
+
+      _project(enuX, enuY, enuZ, w, h) {
+        const tx = enuX - this.cam.targetX;
+        const ty = enuY - this.cam.targetY;
+        const tz = enuZ - this.cam.targetZ;
+        const cy = Math.cos(this.cam.yaw), sy = Math.sin(this.cam.yaw);
+        const cp = Math.cos(this.cam.pitch), sp = Math.sin(this.cam.pitch);
+        const rx = tx * cy + ty * sy;
+        const ry = -tx * sy + ty * cy;
+        const rz = tz;
+        const camY = ry * cp + rz * sp;
+        const camZ = -ry * sp + rz * cp + this.cam.dist;
+        if (camZ < 2.0) return null;
+        const fov = Math.min(w, h) * 0.95;
+        return { x: w * 0.5 + (rx / camZ) * fov, y: h * 0.5 - (camY / camZ) * fov, depth: camZ };
+      }
+
+      render(frame, dt) {
+        this.rotorAngle += dt * 28.0;
+        if (this.useThree) {
+          const cx = this.cam.targetX + this.cam.dist * Math.cos(this.cam.pitch) * Math.sin(this.cam.yaw);
+          const cy = this.cam.targetZ + this.cam.dist * Math.sin(this.cam.pitch);
+          const cz = -this.cam.targetY + this.cam.dist * Math.cos(this.cam.pitch) * Math.cos(this.cam.yaw);
+          this.camera.position.set(cx, cy, cz);
+          this.camera.lookAt(this.cam.targetX, this.cam.targetZ, -this.cam.targetY);
+
+          if (frame) {
+            this._syncThreeEnvironment(frame);
+            this._syncThreePaths(frame);
+
+            const activeIds = new Set(frame.uavs.map((u) => u.uav_id));
+            for (const [id, mesh] of this.uavMeshes.entries()) {
+              if (!activeIds.has(id)) {
+                this.uavGroup.remove(mesh);
+                this.uavGroup.remove(mesh.userData.dropLine);
+                this.uavMeshes.delete(id);
+              }
+            }
+
+            let anyWarn = false, anyBreach = false;
+            for (const uav of frame.uavs) {
+              if (uav.geofence_warning) anyWarn = true;
+              if (uav.geofence_breached) anyBreach = true;
+              let mesh = this.uavMeshes.get(uav.uav_id);
+              if (!mesh) {
+                mesh = this._buildQuadMesh(uav.color || "#38bdf8");
+                this.uavMeshes.set(uav.uav_id, mesh);
+                this.uavGroup.add(mesh);
+                this.uavGroup.add(mesh.userData.dropLine);
+              }
+              const pos3 = this._toThree(uav.position);
+              mesh.position.copy(pos3);
+              mesh.rotation.order = "YXZ";
+              mesh.rotation.y = (uav.attitude_deg.z * Math.PI) / 180 + Math.PI / 2;
+              mesh.rotation.x = -(uav.attitude_deg.y * Math.PI) / 180;
+              mesh.rotation.z = -(uav.attitude_deg.x * Math.PI) / 180;
+
+              const spinRate = (uav.rotor_rpm / 5200) * 0.45;
+              for (let r = 0; r < mesh.userData.rotors.length; r++) {
+                mesh.userData.rotors[r].rotation.y += (r % 2 === 0 ? 1 : -1) * spinRate;
+              }
+              const dropPos = mesh.userData.dropLine.geometry.attributes.position;
+              dropPos.setXYZ(0, pos3.x, pos3.y, pos3.z);
+              dropPos.setXYZ(1, pos3.x, 0, pos3.z);
+              dropPos.needsUpdate = true;
+            }
+            if (this.geofenceMat) {
+              this.geofenceMat.color.setHex(anyBreach ? 0xef4444 : anyWarn ? 0xf59e0b : 0x10b981);
+            }
+          }
+          this.renderer.render(this.scene, this.camera);
+        } else {
+          this._renderCanvas3D(frame);
+        }
+      }
+
+      _renderCanvas3D(frame) {
+        const w = this.host.clientWidth || 800;
+        const h = this.host.clientHeight || 600;
+        if (this.canvas.width !== w || this.canvas.height !== h) {
+          this.canvas.width = w;
+          this.canvas.height = h;
+        }
+        const ctx = this.ctx;
+        ctx.fillStyle = "#070b14";
+        ctx.fillRect(0, 0, w, h);
+
+        // Ground grid
+        ctx.strokeStyle = "rgba(56, 189, 248, 0.14)";
+        ctx.lineWidth = 1;
+        for (let g = -140; g <= 140; g += 20) {
+          const p1 = this._project(g, -140, 0, w, h), p2 = this._project(g, 140, 0, w, h);
+          if (p1 && p2) { ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke(); }
+          const q1 = this._project(-140, g, 0, w, h), q2 = this._project(140, g, 0, w, h);
+          if (q1 && q2) { ctx.beginPath(); ctx.moveTo(q1.x, q1.y); ctx.lineTo(q2.x, q2.y); ctx.stroke(); }
+        }
+        if (!frame) return;
+
+        // Geofence ring
+        if (frame.geofence && frame.geofence.enabled) {
+          const gf = frame.geofence;
+          ctx.strokeStyle = "rgba(16, 185, 129, 0.55)";
+          for (const alt of [0, gf.max_altitude_m]) {
+            ctx.beginPath();
+            for (let a = 0; a <= 48; a++) {
+              const th = (a / 48) * Math.PI * 2;
+              const pr = this._project(gf.center_x + gf.radius_m * Math.cos(th), gf.center_y + gf.radius_m * Math.sin(th), alt, w, h);
+              if (pr) (a === 0 ? ctx.moveTo(pr.x, pr.y) : ctx.lineTo(pr.x, pr.y));
+            }
+            ctx.stroke();
+          }
+        }
+
+        // Obstacles
+        for (const obs of frame.obstacles) {
+          const hx = obs.kind === "cylinder" ? obs.radius : obs.width_x * 0.5;
+          const hy = obs.kind === "cylinder" ? obs.radius : obs.depth_y * 0.5;
+          const z0 = obs.base_z, z1 = obs.base_z + obs.height_z;
+          const corners = [
+            [obs.x - hx, obs.y - hy, z0], [obs.x + hx, obs.y - hy, z0],
+            [obs.x + hx, obs.y + hy, z0], [obs.x - hx, obs.y + hy, z0],
+            [obs.x - hx, obs.y - hy, z1], [obs.x + hx, obs.y - hy, z1],
+            [obs.x + hx, obs.y + hy, z1], [obs.x - hx, obs.y + hy, z1],
+          ].map(([x, y, z]) => this._project(x, y, z, w, h));
+          if (corners.some((c) => !c)) continue;
+          ctx.strokeStyle = "#64748b";
+          ctx.fillStyle = "rgba(51, 65, 85, 0.45)";
+          const edges = [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];
+          ctx.beginPath();
+          for (const [i, j] of edges) {
+            ctx.moveTo(corners[i].x, corners[i].y);
+            ctx.lineTo(corners[j].x, corners[j].y);
+          }
+          ctx.stroke();
+        }
+
+        // Planned paths & Compare overlay
+        const drawPath = (pts, col, lw = 2) => {
+          if (!pts || pts.length < 2) return;
+          ctx.strokeStyle = col; ctx.lineWidth = lw;
+          ctx.beginPath();
+          let started = false;
+          for (const p of pts) {
+            const pr = this._project(p.x, p.y, p.z, w, h);
+            if (pr) {
+              if (!started) { ctx.moveTo(pr.x, pr.y); started = true; }
+              else ctx.lineTo(pr.x, pr.y);
+            }
+          }
+          ctx.stroke();
+        };
+
+        for (const uav of frame.uavs) {
+          drawPath(uav.planned_path, COLORS[uav.planner_type] || uav.color, 2);
+        }
+        if (compareOverlay) {
+          for (const res of compareOverlay.results || []) {
+            if (res.success) drawPath(res.waypoints, COLORS[res.algorithm] || "#fff", 3);
+          }
+        }
+
+        // UAV markers + rotors
+        for (const uav of frame.uavs) {
+          const p = this._project(uav.position.x, uav.position.y, uav.position.z, w, h);
+          const g = this._project(uav.position.x, uav.position.y, 0, w, h);
+          if (!p) continue;
+          if (g) {
+            ctx.strokeStyle = "rgba(148,163,184,0.35)";
+            ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(g.x, g.y); ctx.stroke();
+          }
+          ctx.fillStyle = uav.color || "#38bdf8";
+          ctx.beginPath(); ctx.arc(p.x, p.y, 5, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = "#f8fafc"; ctx.font = "11px monospace";
+          ctx.fillText(`${uav.callsign} (${uav.position.z.toFixed(1)}m)`, p.x + 8, p.y - 6);
+        }
+      }
+    }
+
+    const renderer = new SwarmSceneRenderer(document.getElementById("viewport-canvas-host"));
+    window.setCameraPreset = (p) => renderer.setPreset(p);
+    window.clearCompareOverlay = () => {
+      compareOverlay = null;
+      if (renderer.useThree) renderer._syncCompareOverlay();
+      document.getElementById("btn-clear-overlay").style.display = "none";
+    };
+
+    let lastAnim = performance.now();
+    function animate(now) {
+      const dt = Math.min(0.1, (now - lastAnim) / 1000);
+      lastAnim = now;
+      renderer.render(latestFrame, dt);
+      requestAnimationFrame(animate);
+    }
+    requestAnimationFrame(animate);
+
+    // ---------- UI UPDATES ----------
+    function updateHUD(frame) {
+      latestFrame = frame;
+      document.getElementById("clock-readout").textContent =
+        `T+${frame.sim_time_s.toFixed(2)}s | TICK ${frame.tick} | ${frame.status}`;
+      document.getElementById("lock-badge").textContent =
+        `HARDWARE ACTUATION LOCKED = ${String(frame.hardware_actuation_locked).toUpperCase()}`;
+
+      const w = frame.wind_vector_mps;
+      const wMag = Math.hypot(w.x, w.y, w.z);
+      document.getElementById("wind-mag-lbl").textContent = `${wMag.toFixed(2)} m/s`;
+
+      const container = document.getElementById("uav-cards-container");
+      container.innerHTML = frame.uavs.map((u) => {
+        const isDanger = u.mode.includes("EMERGENCY") || u.geofence_breached || u.battery_soc_pct <= 22;
+        const isWarn = u.mode.includes("COMM_LOSS") || u.mode === "RTL" || u.collision_avoidance_active || u.geofence_warning;
+        const badgeCls = isDanger ? "alert" : isWarn ? "warn" : "";
+        const socCol = u.battery_soc_pct > 50 ? "#10b981" : u.battery_soc_pct > 25 ? "#f59e0b" : "#ef4444";
+        return `
+          <div class="uav-card" style="border-left-color:${u.color}">
+            <div class="uav-header">
+              <span>${u.callsign} <span style="color:#94a3b8;font-weight:400;">[${u.planner_type.toUpperCase()}]</span></span>
+              <span class="mode-badge ${badgeCls}">${u.mode}</span>
+            </div>
+            <div class="soc-bar-bg"><div class="soc-bar-fill" style="width:${u.battery_soc_pct}%; background:${socCol};"></div></div>
+            <div class="metrics-grid">
+              <span>SoC: ${u.battery_soc_pct.toFixed(1)}%</span>
+              <span>Volt: ${u.voltage_v.toFixed(2)} V</span>
+              <span>Power: ${u.power_w.toFixed(0)} W</span>
+              <span>Energy: ${u.energy_consumed_wh.toFixed(2)} Wh</span>
+              <span>GndSpd: ${u.speed_mps.toFixed(1)} m/s</span>
+              <span>AirSpd: ${u.airspeed_mps.toFixed(1)} m/s</span>
+              <span>Pos: ${u.position.x.toFixed(1)},${u.position.y.toFixed(1)},${u.position.z.toFixed(1)}</span>
+              <span>RPM: ${u.rotor_rpm.toFixed(0)}</span>
+              <span>R/P/Y: ${u.attitude_deg.x.toFixed(0)}/${u.attitude_deg.y.toFixed(0)}/${u.attitude_deg.z.toFixed(0)}°</span>
+              <span>WP: ${u.active_waypoint_idx}/${u.total_waypoints}</span>
+            </div>
+            ${u.alerts && u.alerts.length ? `<div class="alert-tags">${u.alerts.map((a) => `<span class="alert-tag">${a}</span>`).join("")}</div>` : ""}
+          </div>
+        `;
+      }).join("");
+
+      const evEl = document.getElementById("event-log");
+      evEl.innerHTML = (frame.events || []).slice().reverse().map((e) => `<div>${e}</div>`).join("");
+    }
+
+    // ---------- WEBSOCKET TELEMETRY ----------
+    function connectWebSocket() {
+      const proto = location.protocol === "https:" ? "wss:" : "ws:";
+      const wsUrl = `${proto}//${location.host}/ws/telemetry`;
+      const pill = document.getElementById("ws-status");
+      ws = new WebSocket(wsUrl);
+      ws.onopen = () => {
+        pill.textContent = "WS: LIVE 20Hz";
+        pill.classList.remove("offline");
+      };
+      ws.onmessage = (evt) => {
+        try { updateHUD(JSON.parse(evt.data)); } catch (_) {}
+      };
+      ws.onclose = () => {
+        pill.textContent = "WS: RECONNECTING";
+        pill.classList.add("offline");
+        setTimeout(connectWebSocket, 1200);
+      };
+    }
+
+    async function initMissionsDropdown() {
+      const res = await fetch("/api/missions");
+      const data = await res.json();
+      const sel = document.getElementById("mission-select");
+      sel.innerHTML = (data.missions || []).map((m) =>
+        `<option value="${m.mission_id}" ${m.mission_id === data.active_mission_id ? "selected" : ""}>${m.name} (${m.uav_count} UAVs)</option>`
+      ).join("");
+    }
+
+    window.switchSwarmPlanner = async (algorithm) => {
+      const frame = await apiPost("/api/simulation/planner", { algorithm });
+      updateHUD(frame);
+      showToast(`Replanned entire swarm using ${algorithm.toUpperCase()}`);
+    };
+
+    // ---------- EVENT BINDINGS ----------
+    document.getElementById("btn-start").onclick = async () => updateHUD(await apiPost("/api/simulation/start"));
+    document.getElementById("btn-pause").onclick = async () => updateHUD(await apiPost("/api/simulation/pause"));
+    document.getElementById("btn-step").onclick = async () => updateHUD(await apiPost("/api/simulation/step", { steps: 20 }));
+    document.getElementById("btn-reset").onclick = async () => updateHUD(await apiPost("/api/simulation/reset"));
+
+    document.getElementById("btn-load-mission").onclick = async () => {
+      const mission_id = document.getElementById("mission-select").value;
+      const res = await apiPost("/api/missions/load", { mission_id });
+      updateHUD(res.telemetry);
+      showToast(`Loaded preset mission: ${mission_id}`);
+    };
+
+    document.getElementById("btn-export-json").onclick = () => {
+      window.location.href = "/api/missions/export";
+    };
+
+    document.getElementById("btn-import-json").onclick = () => {
+      document.getElementById("import-file-input").click();
+    };
+    document.getElementById("import-file-input").onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      try {
+        const json = JSON.parse(await file.text());
+        const res = await apiPost("/api/missions/load", json);
+        updateHUD(res.telemetry);
+        showToast(`Imported custom mission: ${res.mission.name}`);
+      } catch (err) {
+        showToast("Invalid mission JSON file.", true);
+      }
+    };
+
+    ["wind-vx", "wind-vy", "wind-turb"].forEach((id) => {
+      document.getElementById(id).oninput = () => {
+        document.getElementById("lbl-vx").textContent = document.getElementById("wind-vx").value;
+        document.getElementById("lbl-vy").textContent = document.getElementById("wind-vy").value;
+        document.getElementById("lbl-turb").textContent = document.getElementById("wind-turb").value;
+      };
+    });
+    document.getElementById("btn-apply-wind").onclick = async () => {
+      const frame = await apiPost("/api/simulation/wind", {
+        steady_vx_mps: parseFloat(document.getElementById("wind-vx").value),
+        steady_vy_mps: parseFloat(document.getElementById("wind-vy").value),
+        steady_vz_mps: 0.0,
+        turbulence_intensity: parseFloat(document.getElementById("wind-turb").value),
+        gust_frequency_hz: 0.35,
+        seed: 42,
+      });
+      updateHUD(frame);
+      showToast("Updated 3D wind vector & Dryden turbulence field.");
+    };
+
+    document.getElementById("btn-comm-drop").onclick = async () => {
+      const action = document.getElementById("comm-action-select").value;
+      updateHUD(await apiPost("/api/simulation/comm-loss", { active: true, action }));
+      showToast(`Comm link dropped → Autonomous ${action}`, true);
+    };
+    document.getElementById("btn-comm-restore").onclick = async () => {
+      updateHUD(await apiPost("/api/simulation/comm-loss", { active: false }));
+      showToast("GCS communication link restored.");
+    };
+    document.getElementById("btn-emerg-rtl").onclick = async () => {
+      updateHUD(await apiPost("/api/simulation/emergency", { command: "RTL" }));
+      showToast("EMERGENCY RTL activated across swarm!", true);
+    };
+    document.getElementById("btn-emerg-land").onclick = async () => {
+      updateHUD(await apiPost("/api/simulation/emergency", { command: "LAND" }));
+      showToast("EMERGENCY LANDING activated across swarm!", true);
+    };
+    document.getElementById("btn-emerg-clear").onclick = async () => {
+      updateHUD(await apiPost("/api/simulation/emergency", { command: "CLEAR" }));
+      showToast("Emergency override cleared.");
+    };
+
+    document.getElementById("btn-test-lock").onclick = async () => {
+      try {
+        await apiPost("/api/hardware/actuate", { command: "ARM_MOTORS", target_uav_id: "uav-01" });
+      } catch (err) {
+        showToast(`HTTP ${err.status} BLOCKED: ${err.data?.detail?.message || "Hardware actuation locked."}`);
+      }
+    };
+
+    // Comparison Modal
+    const modal = document.getElementById("compare-modal");
+    document.getElementById("btn-open-compare").onclick = () => modal.classList.add("open");
+    document.getElementById("btn-close-compare").onclick = () => modal.classList.remove("open");
+
+    async function runComparisonBenchmark() {
+      const payload = {
+        start: {
+          x: parseFloat(document.getElementById("cmp-sx").value),
+          y: parseFloat(document.getElementById("cmp-sy").value),
+          z: parseFloat(document.getElementById("cmp-sz").value),
+        },
+        goal: {
+          x: parseFloat(document.getElementById("cmp-gx").value),
+          y: parseFloat(document.getElementById("cmp-gy").value),
+          z: parseFloat(document.getElementById("cmp-gz").value),
+        },
+        clearance_m: 2.5,
+      };
+      const res = await apiPost("/api/planners/compare?use_mission_obstacles=true", payload);
+      compareOverlay = res;
+
+      const rows = res.results.map((r) => `
+        <tr>
+          <td><span class="swatch" style="background:${COLORS[r.algorithm]};width:12px;height:12px;vertical-align:middle;margin-right:6px;"></span><strong>${r.algorithm.toUpperCase()}</strong></td>
+          <td>${r.success ? "PASS" : "FAIL"}</td>
+          <td>${r.path_length_m.toFixed(2)} m</td>
+          <td>${r.compute_time_ms.toFixed(2)} ms</td>
+          <td>${r.smoothness_rad.toFixed(3)} rad</td>
+          <td>${r.min_obstacle_clearance_m.toFixed(2)} m</td>
+          <td>${r.estimated_energy_wh.toFixed(3)} Wh</td>
+          <td>${r.algorithm === res.recommended_algorithm ? "★ RECOMMENDED" : ""}</td>
+        </tr>
+      `).join("");
+      document.getElementById("compare-results-container").innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>Algorithm</th><th>Status</th><th>Path Length</th><th>Compute</th>
+              <th>Smoothness</th><th>Min Clearance</th><th>Est. Energy</th><th>Verdict</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+      return res;
+    }
+
+    document.getElementById("btn-run-compare").onclick = runComparisonBenchmark;
+    document.getElementById("btn-overlay-compare").onclick = async () => {
+      if (!compareOverlay) await runComparisonBenchmark();
+      if (renderer.useThree) renderer._syncCompareOverlay();
+      document.getElementById("btn-clear-overlay").style.display = "inline-block";
+      modal.classList.remove("open");
+      showToast("3D planner benchmark paths overlaid in viewport.");
+    };
+
+    initMissionsDropdown();
+    connectWebSocket();
+  </script>
+</body>
+</html>
