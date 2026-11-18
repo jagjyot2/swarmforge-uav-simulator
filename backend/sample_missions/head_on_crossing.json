@@ -1,0 +1,92 @@
+{
+  "mission_id": "head_on_crossing",
+  "name": "Symmetric Intersection Deconfliction",
+  "description": "Four UAVs converging toward the central plaza intersection to validate pairwise reciprocal collision avoidance around twin pylons.",
+  "dt_s": 0.05,
+  "min_separation_m": 5.5,
+  "obstacle_clearance_m": 2.5,
+  "comm_loss_action": "HOLD",
+  "geofence": {
+    "enabled": true,
+    "center_x": 0.0,
+    "center_y": 0.0,
+    "radius_m": 115.0,
+    "min_altitude_m": 2.0,
+    "max_altitude_m": 65.0,
+    "soft_margin_m": 8.0
+  },
+  "wind": {
+    "steady_vx_mps": 0.8,
+    "steady_vy_mps": 0.6,
+    "steady_vz_mps": 0.0,
+    "turbulence_intensity": 0.35,
+    "gust_frequency_hz": 0.3,
+    "seed": 101
+  },
+  "obstacles": [
+    {
+      "id": "pylon-west",
+      "name": "West Pylon",
+      "kind": "cylinder",
+      "x": -22.0,
+      "y": 14.0,
+      "base_z": 0.0,
+      "width_x": 10.0,
+      "depth_y": 10.0,
+      "height_z": 40.0,
+      "radius": 6.0,
+      "color": "#475569"
+    },
+    {
+      "id": "pylon-east",
+      "name": "East Pylon",
+      "kind": "cylinder",
+      "x": 22.0,
+      "y": -14.0,
+      "base_z": 0.0,
+      "width_x": 10.0,
+      "depth_y": 10.0,
+      "height_z": 40.0,
+      "radius": 6.0,
+      "color": "#475569"
+    }
+  ],
+  "uavs": [
+    {
+      "uav_id": "uav-w",
+      "callsign": "ALPHA-W2E",
+      "cruise_speed_mps": 9.5,
+      "start_position": { "x": -65.0, "y": 0.0, "z": 18.0 },
+      "waypoints": [{ "x": 65.0, "y": 0.0, "z": 18.0, "label": "East Gate" }],
+      "planner_type": "astar",
+      "color": "#38bdf8"
+    },
+    {
+      "uav_id": "uav-e",
+      "callsign": "BRAVO-E2W",
+      "cruise_speed_mps": 9.5,
+      "start_position": { "x": 65.0, "y": 0.0, "z": 18.0 },
+      "waypoints": [{ "x": -65.0, "y": 0.0, "z": 18.0, "label": "West Gate" }],
+      "planner_type": "astar",
+      "color": "#10b981"
+    },
+    {
+      "uav_id": "uav-s",
+      "callsign": "CHARLIE-S2N",
+      "cruise_speed_mps": 9.0,
+      "start_position": { "x": 0.0, "y": -65.0, "z": 18.0 },
+      "waypoints": [{ "x": 0.0, "y": 65.0, "z": 18.0, "label": "North Gate" }],
+      "planner_type": "rrt_star",
+      "color": "#a855f7"
+    },
+    {
+      "uav_id": "uav-n",
+      "callsign": "DELTA-N2S",
+      "cruise_speed_mps": 9.0,
+      "start_position": { "x": 0.0, "y": 65.0, "z": 18.0 },
+      "waypoints": [{ "x": 0.0, "y": -65.0, "z": 18.0, "label": "South Gate" }],
+      "planner_type": "apf",
+      "color": "#f59e0b"
+    }
+  ]
+}

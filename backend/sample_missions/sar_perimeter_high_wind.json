@@ -1,0 +1,95 @@
+{
+  "mission_id": "sar_perimeter_high_wind",
+  "name": "High-Wind SAR Perimeter Sweep",
+  "description": "Search-and-rescue perimeter sweep under strong 6.5 m/s crosswind and Dryden gusts with tight battery RTL budget.",
+  "dt_s": 0.05,
+  "min_separation_m": 4.5,
+  "obstacle_clearance_m": 2.5,
+  "comm_loss_action": "RTL",
+  "geofence": {
+    "enabled": true,
+    "center_x": 0.0,
+    "center_y": 0.0,
+    "radius_m": 135.0,
+    "min_altitude_m": 2.0,
+    "max_altitude_m": 80.0,
+    "soft_margin_m": 10.0
+  },
+  "wind": {
+    "steady_vx_mps": -5.5,
+    "steady_vy_mps": 3.4,
+    "steady_vz_mps": 0.0,
+    "turbulence_intensity": 1.6,
+    "gust_frequency_hz": 0.45,
+    "seed": 77
+  },
+  "obstacles": [
+    {
+      "id": "ridge-1",
+      "name": "Ridge Structure North",
+      "kind": "box",
+      "x": -12.0,
+      "y": 24.0,
+      "base_z": 0.0,
+      "width_x": 28.0,
+      "depth_y": 14.0,
+      "height_z": 42.0,
+      "color": "#334155"
+    },
+    {
+      "id": "ridge-2",
+      "name": "Ridge Structure South",
+      "kind": "box",
+      "x": 16.0,
+      "y": -20.0,
+      "base_z": 0.0,
+      "width_x": 22.0,
+      "depth_y": 22.0,
+      "height_z": 36.0,
+      "color": "#475569"
+    },
+    {
+      "id": "flare-stack",
+      "name": "Industrial Stack",
+      "kind": "cylinder",
+      "x": 45.0,
+      "y": 18.0,
+      "base_z": 0.0,
+      "width_x": 12.0,
+      "depth_y": 12.0,
+      "height_z": 58.0,
+      "radius": 7.0,
+      "color": "#64748b"
+    }
+  ],
+  "uavs": [
+    {
+      "uav_id": "sar-01",
+      "callsign": "RESCUE-1",
+      "cruise_speed_mps": 10.0,
+      "initial_soc_pct": 68.0,
+      "rtl_soc_threshold_pct": 25.0,
+      "start_position": { "x": -75.0, "y": -60.0, "z": 22.0 },
+      "waypoints": [
+        { "x": -55.0, "y": 65.0, "z": 26.0, "label": "Sector NW" },
+        { "x": 65.0, "y": 58.0, "z": 28.0, "label": "Sector NE" },
+        { "x": 70.0, "y": -55.0, "z": 22.0, "label": "Sector SE" }
+      ],
+      "planner_type": "astar",
+      "color": "#38bdf8"
+    },
+    {
+      "uav_id": "sar-02",
+      "callsign": "RESCUE-2",
+      "cruise_speed_mps": 9.5,
+      "initial_soc_pct": 30.0,
+      "rtl_soc_threshold_pct": 25.0,
+      "start_position": { "x": 70.0, "y": -60.0, "z": 20.0 },
+      "waypoints": [
+        { "x": -65.0, "y": 55.0, "z": 24.0, "label": "Diagonal Sweep" }
+      ],
+      "planner_type": "rrt_star",
+      "color": "#a855f7"
+    }
+  ]
+}

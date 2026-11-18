@@ -1,0 +1,164 @@
+{
+  "mission_id": "urban_corridor",
+  "name": "Urban Corridor Inspection Swarm",
+  "description": "Three heterogeneous multirotors executing A*, RRT*, and APF through an urban skyline with cylindrical comms tower and moderate crosswind.",
+  "dt_s": 0.05,
+  "min_separation_m": 4.5,
+  "obstacle_clearance_m": 2.5,
+  "comm_loss_action": "RTL",
+  "geofence": {
+    "enabled": true,
+    "center_x": 0.0,
+    "center_y": 0.0,
+    "radius_m": 125.0,
+    "min_altitude_m": 1.0,
+    "max_altitude_m": 75.0,
+    "soft_margin_m": 8.0
+  },
+  "wind": {
+    "steady_vx_mps": 2.4,
+    "steady_vy_mps": -1.1,
+    "steady_vz_mps": 0.0,
+    "turbulence_intensity": 0.75,
+    "gust_frequency_hz": 0.35,
+    "seed": 42
+  },
+  "obstacles": [
+    {
+      "id": "bldg-alpha",
+      "name": "Apex Tower A",
+      "kind": "box",
+      "x": -18.0,
+      "y": -6.0,
+      "base_z": 0.0,
+      "width_x": 16.0,
+      "depth_y": 18.0,
+      "height_z": 38.0,
+      "color": "#334155"
+    },
+    {
+      "id": "bldg-beta",
+      "name": "Central Plaza Hub",
+      "kind": "box",
+      "x": 10.0,
+      "y": 10.0,
+      "base_z": 0.0,
+      "width_x": 18.0,
+      "depth_y": 14.0,
+      "height_z": 46.0,
+      "color": "#475569"
+    },
+    {
+      "id": "tower-comms",
+      "name": "Relay Mast",
+      "kind": "cylinder",
+      "x": -2.0,
+      "y": -28.0,
+      "base_z": 0.0,
+      "width_x": 12.0,
+      "depth_y": 12.0,
+      "height_z": 52.0,
+      "radius": 7.5,
+      "color": "#64748b"
+    },
+    {
+      "id": "bldg-gamma",
+      "name": "East Logistics Block",
+      "kind": "box",
+      "x": 38.0,
+      "y": -14.0,
+      "base_z": 0.0,
+      "width_x": 16.0,
+      "depth_y": 24.0,
+      "height_z": 32.0,
+      "color": "#3f4f63"
+    },
+    {
+      "id": "bldg-delta",
+      "name": "North Substation",
+      "kind": "box",
+      "x": -34.0,
+      "y": 30.0,
+      "base_z": 0.0,
+      "width_x": 20.0,
+      "depth_y": 14.0,
+      "height_z": 28.0,
+      "color": "#3b495c"
+    },
+    {
+      "id": "tower-west",
+      "name": "West Observation Silo",
+      "kind": "cylinder",
+      "x": -42.0,
+      "y": -18.0,
+      "base_z": 0.0,
+      "width_x": 10.0,
+      "depth_y": 10.0,
+      "height_z": 34.0,
+      "radius": 6.5,
+      "color": "#526277"
+    }
+  ],
+  "uavs": [
+    {
+      "uav_id": "uav-01",
+      "callsign": "FALCON-A*",
+      "mass_kg": 1.85,
+      "max_speed_mps": 14.0,
+      "max_accel_mps2": 6.5,
+      "cruise_speed_mps": 9.0,
+      "drag_coeff": 0.045,
+      "hover_power_w": 210.0,
+      "battery_capacity_wh": 99.9,
+      "initial_soc_pct": 100.0,
+      "rtl_soc_threshold_pct": 22.0,
+      "start_position": { "x": -62.0, "y": -52.0, "z": 16.0 },
+      "waypoints": [
+        { "x": 58.0, "y": 48.0, "z": 22.0, "label": "North-East Roof" },
+        { "x": -56.0, "y": 46.0, "z": 20.0, "label": "North-West Relay" }
+      ],
+      "planner_type": "astar",
+      "color": "#38bdf8"
+    },
+    {
+      "uav_id": "uav-02",
+      "callsign": "VIPER-RRT*",
+      "mass_kg": 1.9,
+      "max_speed_mps": 14.0,
+      "max_accel_mps2": 6.5,
+      "cruise_speed_mps": 8.5,
+      "drag_coeff": 0.045,
+      "hover_power_w": 215.0,
+      "battery_capacity_wh": 99.9,
+      "initial_soc_pct": 96.0,
+      "rtl_soc_threshold_pct": 22.0,
+      "start_position": { "x": -58.0, "y": 48.0, "z": 18.0 },
+      "waypoints": [
+        { "x": 60.0, "y": -44.0, "z": 20.0, "label": "South-East Pad" },
+        { "x": 52.0, "y": 38.0, "z": 24.0, "label": "East Corridor" }
+      ],
+      "planner_type": "rrt_star",
+      "color": "#a855f7"
+    },
+    {
+      "uav_id": "uav-03",
+      "callsign": "KESTREL-APF",
+      "mass_kg": 1.75,
+      "max_speed_mps": 14.0,
+      "max_accel_mps2": 6.5,
+      "cruise_speed_mps": 8.5,
+      "drag_coeff": 0.042,
+      "hover_power_w": 200.0,
+      "battery_capacity_wh": 99.9,
+      "initial_soc_pct": 94.0,
+      "rtl_soc_threshold_pct": 22.0,
+      "start_position": { "x": 62.0, "y": -50.0, "z": 17.0 },
+      "waypoints": [
+        { "x": -58.0, "y": -44.0, "z": 22.0, "label": "South-West Depot" },
+        { "x": -12.0, "y": 54.0, "z": 20.0, "label": "North Perimeter" }
+      ],
+      "planner_type": "apf",
+      "color": "#f59e0b"
+    }
+  ]
+}
